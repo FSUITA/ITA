@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ITA Chart Prediction Game</title>
+  <style>
+    :root {
+      --bg: #0b0d12; --panel: #131722; --muted:#8b94a7; --text:#e8edf7; --brand:#4da3ff; --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height:100%; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background:linear-gradient(180deg, #0b0d12, #0f1420 50%, #0b0d12); color:var(--text); }
+    .wrap { max-width:1100px; margin:0 auto; padding:24px; }
+    h1 { font-size: clamp(22px, 3.2vw, 34px); margin:0 0 8px; }
+    .sub { color:var(--muted); margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns: 1.2fr .8fr; gap:20px; align-items: start; }
+    @media (max-width: 900px){ .grid{ grid-template-columns: 1fr; } }
+    .card { background:var(--panel); border:1px solid #1f2635; border-radius:16px; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .card > .hd { padding:14px 16px; border-bottom:1px solid #1f2635; font-weight:700; letter-spacing:.2px; background:linear-gradient(180deg, #161c2b, #141a27); }
+    .card > .bd { padding:16px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row > * { flex: 1 1 160px; }
+    input[type=text], select, input[type=file] { width:100%; padding:12px 12px; border-radius:10px; border:1px solid #273149; background:#0f1420; color:var(--text); outline:none; }
+    select { appearance:none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 22px) 50%, calc(100% - 12px) 50%; background-size:10px 10px; background-repeat:no-repeat; }
+    .btn { cursor:pointer; user-select:none; border:1px solid transparent; padding:12px 16px; border-radius:12px; font-weight:700; letter-spacing:.2px; transition: .15s ease; background:#1b2334; color:#dbe6ff; }
+    .btn:hover { transform: translateY(-1px); background:#24304a; }
+    .btn.brand { background: #0d3b66; border-color:#0d3b66; }
+    .btn.brand:hover { background:#11477a; }
+    .btn.ok { background:#0f3a22; border-color:#14532d; }
+    .btn.warn { background:#3a2f0f; border-color:#735a1b; }
+    .btn.bad  { background:#3a1414; border-color:#7f1d1d; }
+    .btn.ghost { background:transparent; border-color:#273149; color:#b8c3da; }
+    .btn.block { width:100%; }
+    .muted { color:var(--muted); font-size:14px; }
+    .list { list-style:none; padding:0; margin:0; }
+    .list li { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid #1f2635; }
+    .badge { padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:.3px; border:1px solid #273149; color:#c6d3f0; background:#101728; }
+    .badge.ok { color:#c9f3d8; border-color:#1f7a46; background:#0f2a1b; }
+    .badge.bad { color:#ffd2d2; border-color:#7a1f1f; background:#2a0f0f; }
+    .badge.wait { color:#ffe6bf; border-color:#7a5b1f; background:#2a1e0f; }
+    .stack { display:flex; gap:6px; flex-wrap:wrap; }
+    .chart { position:relative; width:100%; aspect-ratio: 16/9; background:#0a0f19; border:1px dashed #273149; border-radius:12px; overflow:hidden; }
+    .chart img, .chart video { width:100%; height:100%; object-fit:contain; display:block; background:#000; }
+    .pill { font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid #273149; color:#aeb9d3; }
+    .table { width:100%; border-collapse:collapse; }
+    .table th, .table td { padding:10px 8px; border-bottom:1px solid #1f2635; text-align:left; font-size:14px; }
+    .right { text-align:right; }
+    .winner { background: rgba(34,197,94,.08); }
+    .loser { background: rgba(239,68,68,.06); }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0e1320; padding:2px 6px; border:1px solid #273149; border-radius:6px; font-size:12px; color:#b8c3da; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ITA Chart Prediction Game</h1>
+    <div class="sub">Load a chart image/GIF, collect group guesses (<span class="kbd">Up</span>, <span class="kbd">Down</span>, <span class="kbd">Sideways</span>), lock submissions, then reveal the answer and winners.</div>
+
+    <div class="grid">
+      <section class="card">
+        <div class="hd">Chart</div>
+        <div class="bd">
+          <div class="row" style="margin-bottom:12px">
+            <input type="file" id="chartFile" accept="image/*,video/mp4,video/webm,video/ogg" />
+            <button class="btn ghost" id="clearChart">Clear</button>
+          </div>
+          <div class="chart" id="chartBox">
+            <div style="position:absolute;inset:0;display:grid;place-items:center;color:#6b7280">
+              <div>
+                <div style="text-align:center;margin-bottom:6px">Drop or choose a chart image / short video</div>
+                <div class="muted" style="text-align:center">TIP: A short MP4/WebM works well for the reveal</div>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="playPause" disabled>Play / Pause</button>
+            <button class="btn ghost" id="fitContain" disabled>Fit: Contain</button>
+            <button class="btn ghost" id="fitCover" disabled>Fit: Cover</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="hd">Submit a Group Guess</div>
+        <div class="bd">
+          <div class="row">
+            <input type="text" id="group" placeholder="Group name (e.g., Delta)" />
+            <select id="guess">
+              <option value="">Select prediction…</option>
+              <option value="Up">Up 📈</option>
+              <option value="Down">Down 📉</option>
+              <option value="Sideways">Sideways ➡️</option>
+            </select>
+            <button class="btn brand" id="submit">Submit</button>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap">
+            <button class="btn warn" id="lock">Lock Answers 🔒</button>
+            <button class="btn ok" id="reveal">Reveal ✅</button>
+            <button class="btn ghost" id="newRound">New Round ↻</button>
+            <span class="pill" id="stagePill">Stage: Collecting</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="grid-column:1 / -1">
+        <div class="hd">Submissions</div>
+        <div class="bd">
+          <div class="row" style="margin-bottom:8px">
+            <div class="muted">Names are visible; guesses are hidden until reveal.</div>
+            <div class="right" style="flex:1"></div>
+            <button class="btn ghost" id="copySummary">Copy Summary</button>
+          </div>
+          <table class="table" id="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Group</th>
+                <th>Guess</th>
+                <th class="right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+            <tfoot>
+              <tr>
+                <td></td>
+                <td><strong>Totals</strong></td>
+                <td id="totals">—</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const qs = (s)=>document.querySelector(s);
+    const qsa = (s)=>Array.from(document.querySelectorAll(s));
+
+    // State
+    let stage = 'collect'; // collect -> locked -> reveal
+    let rows = []; // {id, group, guess}
+    let correct = null;
+    let mediaEl = null; // <img> or <video>
+
+    const els = {
+      group: qs('#group'),
+      guess: qs('#guess'),
+      submit: qs('#submit'),
+      lock: qs('#lock'),
+      reveal: qs('#reveal'),
+      newRound: qs('#newRound'),
+      stagePill: qs('#stagePill'),
+      tbody: qs('#tbody'),
+      totals: qs('#totals'),
+      copySummary: qs('#copySummary'),
+      chartFile: qs('#chartFile'),
+      chartBox: qs('#chartBox'),
+      clearChart: qs('#clearChart'),
+      playPause: qs('#playPause'),
+      fitContain: qs('#fitContain'),
+      fitCover: qs('#fitCover'),
+    };
+
+    function updateStage(newStage){
+      stage = newStage;
+      const map = { collect: 'Collecting', locked: 'Locked', reveal: 'Revealed' };
+      els.stagePill.textContent = `Stage: ${map[stage]}`;
+      els.group.disabled = stage !== 'collect';
+      els.guess.disabled = stage !== 'collect';
+      els.submit.disabled = stage !== 'collect';
+      els.lock.disabled = stage !== 'collect' || rows.length === 0;
+      els.reveal.disabled = !(stage === 'locked');
+      renderTable();
+    }
+
+    function addRow(group, guess){
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random());
+      rows.push({id, group: group.trim(), guess});
+      els.group.value = '';
+      els.guess.value = '';
+      renderTable();
+      els.group.focus();
+    }
+
+    function removeRow(id){
+      rows = rows.filter(r=>r.id!==id);
+      renderTable();
+    }
+
+    function renderTable(){
+      const t = [];
+      const counts = {Up:0, Down:0, Sideways:0};
+      rows.forEach((r,i)=>{
+        if(r.guess && counts[r.guess]!==undefined) counts[r.guess]++;
+        const revealGuess = stage === 'reveal' ? r.guess : '—';
+        const klass = stage==='reveal' ? (r.guess === correct ? 'winner' : 'loser') : '';
+        t.push(`<tr class="${klass}"><td>${i+1}</td><td>${escapeHtml(r.group)}</td><td>${escapeHtml(revealGuess)}</td><td class="right">${stage==='collect' ? `<button class='btn ghost' data-del='${r.id}'>Delete</button>`:''}</td></tr>`)
+      });
+      els.tbody.innerHTML = t.join('');
+      const totalTxt = rows.length===0 ? '—' : `Up: ${counts.Up} · Down: ${counts.Down} · Sideways: ${counts.Sideways}`;
+      els.totals.textContent = totalTxt;
+      qsa('[data-del]').forEach(btn=>btn.onclick = (e)=>removeRow(btn.getAttribute('data-del')));
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+
+    // Handlers
+    els.submit.onclick = ()=>{
+      const g = els.group.value.trim();
+      const gu = els.guess.value;
+      if(!g){ alert('Enter a group name'); return; }
+      if(!gu){ alert('Select a prediction'); return; }
+      addRow(g, gu);
+      els.lock.disabled = rows.length===0;
+    };
+
+    els.lock.onclick = ()=>{
+      if(rows.length===0) { alert('No submissions to lock.'); return; }
+      updateStage('locked');
+    };
+
+    els.reveal.onclick = ()=>{
+      if(stage!=='locked') return;
+      const choice = prompt('Enter correct answer: Up, Down, or Sideways');
+      if(!choice) return;
+      const norm = choice.trim().toLowerCase();
+      const map = { up:'Up', down:'Down', sideways:'Sideways' };
+      if(!(norm in map)){ alert('Please type Up, Down, or Sideways'); return; }
+      correct = map[norm];
+      updateStage('reveal');
+      if(mediaEl && mediaEl.tagName==='VIDEO'){
+        mediaEl.currentTime = 0; mediaEl.play().catch(()=>{});
+      }
+    };
+
+    els.newRound.onclick = ()=>{
+      if(!confirm('Start a new round? This clears submissions and resets the stage.')) return;
+      rows = []; correct = null; updateStage('collect');
+    };
+
+    els.copySummary.onclick = ()=>{
+      const winners = rows.filter(r=>r.guess===correct).map(r=>r.group);
+      const losers = rows.filter(r=>r.guess!==correct).map(r=>r.group);
+      const summary = `Answer: ${correct ?? '—'}\nWinners (${winners.length}): ${winners.join(', ') || '—'}\nOthers (${losers.length}): ${losers.join(', ') || '—'}`;
+      navigator.clipboard.writeText(summary).then(()=>{
+        els.copySummary.textContent = 'Copied!';
+        setTimeout(()=>els.copySummary.textContent='Copy Summary', 1200);
+      });
+    };
+
+    // Chart loader (image or video)
+    function setMedia(file){
+      const url = URL.createObjectURL(file);
+      els.chartBox.innerHTML = '';
+      if(file.type.startsWith('video/')){
+        mediaEl = document.createElement('video');
+        mediaEl.src = url; mediaEl.controls = false; mediaEl.playsInline = true; mediaEl.muted = true; mediaEl.loop = false; mediaEl.style.objectFit = 'contain';
+        els.chartBox.appendChild(mediaEl);
+        enableMediaControls(true);
+      } else if(file.type.startsWith('image/')){
+        mediaEl = document.createElement('img');
+        mediaEl.src = url; mediaEl.alt = 'Chart'; mediaEl.style.objectFit = 'contain';
+        els.chartBox.appendChild(mediaEl);
+        enableMediaControls(true, {video:false});
+      } else {
+        alert('Unsupported file type. Use an image or a short video.');
+      }
+    }
+
+    function enableMediaControls(on){
+      els.playPause.disabled = !on || mediaEl.tagName!=='VIDEO';
+      els.fitContain.disabled = !on; els.fitCover.disabled = !on;
+    }
+
+    els.chartFile.addEventListener('change', (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(f) setMedia(f);
+    });
+
+    els.clearChart.onclick = ()=>{
+      els.chartFile.value = '';
+      els.chartBox.innerHTML = '<div style="position:absolute;inset:0;display:grid;place-items:center;color:#6b7280"><div><div style="text-align:center;margin-bottom:6px">Drop or choose a chart image / short video</div><div class="muted" style="text-align:center">TIP: A short MP4/WebM works well for the reveal</div></div></div>';
+      mediaEl = null; enableMediaControls(false);
+    };
+
+    els.playPause.onclick = ()=>{
+      if(!mediaEl || mediaEl.tagName!=='VIDEO') return;
+      if(mediaEl.paused){ mediaEl.play(); } else { mediaEl.pause(); }
+    };
+
+    els.fitContain.onclick = ()=>{ if(mediaEl){ mediaEl.style.objectFit='contain'; }};
+    els.fitCover.onclick = ()=>{ if(mediaEl){ mediaEl.style.objectFit='cover'; }};
+
+    // Drag & drop
+    ;['dragenter','dragover'].forEach(evt=>{
+      els.chartBox.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); els.chartBox.style.borderColor = '#4da3ff'; });
+    });
+    ;['dragleave','drop'].forEach(evt=>{
+      els.chartBox.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); els.chartBox.style.borderColor = '#273149'; });
+    });
+    els.chartBox.addEventListener('drop', e=>{
+      const dt = e.dataTransfer; if(!dt) return; const f = dt.files && dt.files[0]; if(f) setMedia(f);
+    });
+
+    // Keyboard: Enter submits when focused in inputs
+    els.group.addEventListener('keydown', e=>{ if(e.key==='Enter') els.submit.click(); });
+    els.guess.addEventListener('keydown', e=>{ if(e.key==='Enter') els.submit.click(); });
+
+    // Init
+    updateStage('collect');
+  </script>
+</body>
+</html>
